@@ -1,0 +1,12 @@
+node_modules
+.next
+.env*
+!.env.example
+coverage
+playwright-report
+test-results
+*.log
+tsconfig.tsbuildinfo
+.neon
+public/uploads/*
+!public/uploads/.gitkeep

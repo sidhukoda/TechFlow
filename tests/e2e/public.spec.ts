@@ -1,0 +1,3 @@
+import { test, expect } from "@playwright/test";
+test("public homepage and tracking entry render", async ({page}) => { await page.goto("/"); await expect(page.getByRole("heading", {name:/A clearer path/})).toBeVisible(); await page.getByRole("link", {name:"Track a report"}).first().click(); await expect(page.getByRole("heading", {name:"Follow your report"})).toBeVisible(); });
+test("registration validates inputs before submission", async ({page}) => { await page.goto("/register"); await expect(page.getByRole("heading", {name:"Create your account"})).toBeVisible(); await page.getByLabel("Password").fill("short"); await expect(page.getByLabel("Password")).toHaveAttribute("minlength","12"); });

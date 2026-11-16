@@ -1,0 +1,16 @@
+{
+  "info": { "name": "TechFlow API", "description": "Set baseUrl and sign in through Auth.js to obtain a session cookie before protected requests.", "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json" },
+  "variable": [{ "key": "baseUrl", "value": "http://localhost:3000" }, { "key": "complaintId", "value": "" }],
+  "item": [
+    { "name": "Register citizen", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"Demo Citizen\",\"email\":\"citizen@example.com\",\"password\":\"change-this-password\"}" }, "url": "{{baseUrl}}/api/auth/register" } },
+    { "name": "Current user", "request": { "method": "GET", "url": "{{baseUrl}}/api/auth/me" } },
+    { "name": "Categories", "request": { "method": "GET", "url": "{{baseUrl}}/api/categories" } },
+    { "name": "List complaints", "request": { "method": "GET", "url": "{{baseUrl}}/api/complaints?page=1&limit=10" } },
+    { "name": "Create complaint", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"title\":\"Large pothole near the junction\",\"description\":\"The pothole is damaging vehicles and needs urgent repair.\",\"categoryId\":\"REPLACE_WITH_CATEGORY_UUID\",\"address\":\"Main Road, city centre\",\"latitude\":12.9716,\"longitude\":77.5946,\"images\":[]}" }, "url": "{{baseUrl}}/api/complaints" } },
+    { "name": "Complaint detail", "request": { "method": "GET", "url": "{{baseUrl}}/api/complaints/{{complaintId}}" } },
+    { "name": "Review complaint", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"status\":\"UNDER_REVIEW\",\"remarks\":\"Reviewed by department\"}" }, "url": "{{baseUrl}}/api/complaints/{{complaintId}}/status" } },
+    { "name": "Assign worker", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"workerId\":\"REPLACE_WITH_WORKER_UUID\"}" }, "url": "{{baseUrl}}/api/complaints/{{complaintId}}/assign" } },
+    { "name": "Notifications", "request": { "method": "GET", "url": "{{baseUrl}}/api/notifications" } },
+    { "name": "Analytics overview", "request": { "method": "GET", "url": "{{baseUrl}}/api/analytics/overview" } }
+  ]
+}

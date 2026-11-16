@@ -1,0 +1,6 @@
+"use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/lib/client-api";
+import { Button } from "@/components/ui/button";
+export function ResolutionReviewActions({id,approved}:{id:string;approved:boolean}){const router=useRouter();const [remarks,setRemarks]=useState("");const [error,setError]=useState("");const [busy,setBusy]=useState(false);async function submit(approved:boolean){setBusy(true);setError("");try{await api(`/api/complaints/${id}/resolution-review`,{method:"POST",body:JSON.stringify({approved,remarks})});router.refresh();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}return <div className="mb-5 rounded-xl border border-blue-100 bg-blue-50 p-4"><p className="text-sm font-semibold">Completion evidence</p>{approved?<p className="mt-2 text-sm text-green-700">Approved. Waiting for citizen verification.</p>:<><textarea className="mt-3" value={remarks} onChange={e=>setRemarks(e.target.value)} placeholder="Review remarks"/><div className="mt-3 flex gap-2"><Button size="sm" disabled={busy} onClick={()=>submit(true)}>Approve</Button><Button size="sm" variant="outline" disabled={busy||!remarks.trim()} onClick={()=>submit(false)}>Reject</Button></div></>}{error&&<p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}</div>}
