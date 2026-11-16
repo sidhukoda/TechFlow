@@ -96,11 +96,11 @@ const contactChannels = [
     icon: Mail,
     iconColor: "text-[#1A6BFF]",
     iconBg: "bg-[#EEF4FE]",
-    primary: "support@techflow.org",
+    primary: "support@techflow.digital",
     secondary: "helpdesk@techflow.gov.in",
     description: "Submit inquiries regarding ticket progression, photographic resolution proof, or municipal jurisdiction questions.",
     actionLabel: "Email Support",
-    actionHref: "mailto:support@techflow.org"
+    actionHref: "mailto:support@techflow.digital"
   },
   {
     title: "Municipal Control Center",
@@ -423,7 +423,7 @@ export function LandingPage() {
                 </div>
                 <div>
                   <p className="font-bold text-[#0F1A2C]">Support Email</p>
-                  <p className="font-mono text-xs text-slate-500 mt-0.5">support@techflow.org</p>
+                  <p className="font-mono text-xs text-slate-500 mt-0.5">support@techflow.digital</p>
                 </div>
               </div>
             </div>
