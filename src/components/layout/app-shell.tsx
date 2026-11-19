@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -42,7 +43,7 @@ const menuSections: Record<Role, { general: MenuItem[]; tools: MenuItem[] }> = {
     ],
     tools: [
       { href: "/citizen/new-complaint", label: "Report Issue", icon: Plus },
-      { href: "/citizen/notifications", label: "Notifications", icon: Bell, badge: 2 },
+      { href: "/citizen/notifications", label: "Notifications", icon: Bell },
       { href: "/citizen/profile", label: "Settings & Profile", icon: Settings }
     ]
   },
@@ -137,6 +138,44 @@ export function AppShell({
   const displayName = name.replace(/^Demo\s+/i, "").trim() || "User";
   const initials = displayName.split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase() || "TF";
 
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchUnread() {
+      try {
+        const res = await fetch("/api/notifications?page=1", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && typeof data?.unread === "number") {
+            setUnreadCount(data.unread);
+          }
+        }
+      } catch {
+        // network or auth offline
+      }
+    }
+
+    void fetchUnread();
+    const interval = setInterval(fetchUnread, 20000);
+
+    const handleUpdate = (e?: Event) => {
+      const custom = e as CustomEvent<{ unread?: number }>;
+      if (typeof custom?.detail?.unread === "number") {
+        setUnreadCount(custom.detail.unread);
+      } else {
+        void fetchUnread();
+      }
+    };
+
+    window.addEventListener("notifications-changed", handleUpdate);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      window.removeEventListener("notifications-changed", handleUpdate);
+    };
+  }, [path]);
+
   async function logout() {
     await signOut({ redirect: false });
     router.push("/");
@@ -191,6 +230,7 @@ export function AppShell({
             <p className="px-3 text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">Tools</p>
             {toolItems.map(item => {
               const active = path === item.href || path.startsWith(`${item.href}/`);
+              const badge = item.label === "Notifications" ? (unreadCount > 0 ? unreadCount : undefined) : item.badge;
               return (
                 <Link
                   key={item.href}
@@ -206,9 +246,9 @@ export function AppShell({
                     <item.icon size={19} className={active ? "text-blue-600" : "text-slate-400"} />
                     <span>{item.label}</span>
                   </div>
-                  {item.badge !== undefined && (
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white shadow-sm">
-                      {item.badge}
+                  {badge !== undefined && (
+                    <span className="flex h-5 min-w-5 px-1.5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white shadow-sm">
+                      {badge > 99 ? "99+" : badge}
                     </span>
                   )}
                 </Link>
@@ -271,11 +311,15 @@ export function AppShell({
           <div className="flex items-center gap-2">
             <Link
               href={notificationsHref}
-              aria-label="Notifications"
+              aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}
               className="relative flex h-9 w-9 items-center justify-center rounded-full bg-slate-50 border border-slate-200 text-slate-600 active:scale-95 transition"
             >
               <Bell size={16} />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-blue-600 ring-2 ring-white" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold text-white ring-2 ring-white shadow-sm">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
             </Link>
 
             <Link
@@ -314,11 +358,15 @@ export function AppShell({
           <div className="flex items-center gap-3 ml-auto">
             <Link
               href={notificationsHref}
-              aria-label="Notifications"
+              aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}
               className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white border border-[#E7ECF3] shadow-card text-slate-600 transition hover:bg-slate-50"
             >
               <Bell size={18} />
-              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-blue-600 ring-2 ring-white" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold text-white ring-2 ring-white shadow-sm">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
             </Link>
 
             <Link
@@ -378,6 +426,7 @@ export function AppShell({
                 );
               }
 
+              const isAlertsTab = tab.icon === Bell || tab.label === "Alerts";
               return (
                 <Link
                   key={tab.href}
@@ -387,7 +436,12 @@ export function AppShell({
                     active ? "text-[#1A6BFF]" : "text-slate-400 hover:text-slate-600"
                   )}
                 >
-                  <tab.icon size={20} className={active ? "text-[#1A6BFF]" : "text-slate-400"} />
+                  <div className="relative">
+                    <tab.icon size={20} className={active ? "text-[#1A6BFF]" : "text-slate-400"} />
+                    {isAlertsTab && unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 rounded-full bg-blue-600 ring-2 ring-white" />
+                    )}
+                  </div>
                   <span className={cn("mt-1 text-[10px] font-semibold tracking-tight", active && "font-bold text-[#1A6BFF]")}>
                     {tab.label}
                   </span>

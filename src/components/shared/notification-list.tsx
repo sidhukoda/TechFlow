@@ -26,6 +26,9 @@ export function NotificationList() {
       setItems(result.items);
       setUnread(result.unread);
       setError("");
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("notifications-changed", { detail: { unread: result.unread } }));
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load notifications.");
     }

@@ -5,7 +5,7 @@ import GoogleProvider from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 
-const DEMO_USERS: Record<string, { id: string; name: string; role: string }> = {
+export const DEMO_USERS: Record<string, { id: string; name: string; role: string }> = {
   "superadmin@techflow.example": {
     id: "00000000-0000-0000-0000-000000000001",
     name: "Super Admin",
@@ -28,9 +28,12 @@ const DEMO_USERS: Record<string, { id: string; name: string; role: string }> = {
   }
 };
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 7 },
   pages: { signIn: "/login" },
+  useSecureCookies: process.env.NODE_ENV === "production" && (process.env.NEXTAUTH_URL?.startsWith("https://") ?? false),
   providers: [
     ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
       ? [
@@ -88,6 +91,21 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      try {
+        const parsedUrl = new URL(url);
+        const parsedBase = new URL(baseUrl);
+        if (parsedUrl.origin === parsedBase.origin) return url;
+        // Allow redirect between apex and www domains
+        const baseHost = parsedBase.hostname.replace(/^www\./, "");
+        const urlHost = parsedUrl.hostname.replace(/^www\./, "");
+        if (baseHost === urlHost) return url;
+      } catch {
+        // invalid URL fallback
+      }
+      return baseUrl;
+    },
     async signIn({ user, account, profile }) {
       if (account?.provider === "google") {
         if (!user.email) return false;
@@ -120,20 +138,56 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
     async jwt({ token, user, account }) {
+      const email = (user?.email || token.email)?.toLowerCase().trim();
+
       if (user) {
-        token.uid = user.id;
-        token.sv = (user as any).sessionVersion ?? 1;
-        token.role = (user as any).role ?? "CITIZEN";
-        token.name = user.name;
-        token.email = user.email;
+        token.name = user.name || token.name;
+        token.email = email;
+        if (UUID_REGEX.test(user.id)) {
+          token.uid = user.id;
+        }
+        token.role = (user as any).role || token.role || "CITIZEN";
+        token.sv = (user as any).sessionVersion ?? token.sv ?? 1;
       }
+
+      // Ensure token.uid is a valid PostgreSQL database UUID
+      const hasValidUuid = typeof token.uid === "string" && UUID_REGEX.test(token.uid);
+      if ((!hasValidUuid || account?.provider === "google") && email) {
+        try {
+          let dbUser = await prisma.user.findUnique({ where: { email } });
+          if (!dbUser && (account?.provider === "google" || user)) {
+            dbUser = await prisma.user.create({
+              data: {
+                email,
+                name: token.name || user?.name || "Citizen User",
+                role: "CITIZEN",
+                passwordHash: "OAUTH_GOOGLE_ACCOUNT",
+                isActive: true,
+                sessionVersion: 1
+              }
+            });
+          }
+          if (dbUser) {
+            token.uid = dbUser.id;
+            token.role = dbUser.role;
+            token.sv = dbUser.sessionVersion;
+            token.name = dbUser.name;
+          }
+        } catch (err: any) {
+          console.warn("[Auth JWT] User lookup fallback:", err?.message || err);
+        }
+      }
+
+      if (!token.role) token.role = "CITIZEN";
+      if (!token.sv) token.sv = 1;
+
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.uid as string;
-        session.user.sessionVersion = token.sv as number;
-        (session.user as any).role = token.role;
+        session.user.id = (token.uid as string) || (session.user as any).id;
+        session.user.sessionVersion = (token.sv as number) || 1;
+        (session.user as any).role = token.role || "CITIZEN";
         session.user.name = token.name;
         session.user.email = token.email;
       }
